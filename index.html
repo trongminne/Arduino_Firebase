@@ -1,34 +1,128 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Trọng Min</title>
-        <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-database.js"></script>
-        <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.4/css/all.css">
 
-        <script src = "script.js"></script>
-        <link rel="stylesheet" type="text/css" href ="style.css">
-    </head>
-    <body>
-        <video autoplay loop muted>
-            <source src="bg.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-        <div class = "wrapper">
-            <a class = "icon1" >
-				<i class="fas fa-4x fa-lightbulb"></i>
-			</a>
-            <div class = "progress">
-                <div class = "toggle-btn" id ="unact">
-                    <div class = "inner-circle"></div>
-                </div>
-                <div class = "toggle-btn active" id ="act">
-                    <div class = inner-circle></div>
-                </div>
+<head>
+    <meta charset="utf-8">
+    <title>Trọng Min</title>
+    <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.4.1/firebase-database.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.4/css/all.css">
+
+    <script src="script.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+    <div id="webcam-container"></div>
+    <div id="label-container" style="display: none;"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script>
+        const URL = "https://teachablemachine.withgoogle.com/models/r50vOdkmk/";
+        let model, webcam, labelContainer, maxPredictions;
+        let notified = false; // Biến cờ để đánh dấu đã thông báo hay chưa
+
+        window.onload = function () {
+            startWebcamAndModel();
+        };
+
+        async function startWebcamAndModel() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true;
+            webcam = new tmImage.Webcam(200, 200, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        // Kiểm tra và ẩn/hiện phần tử khi nhận diện
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+
+            // Kiểm tra xác suất và hiển thị cảnh báo nếu nó vượt qua ngưỡng
+            if (!notified) {
+                for (let i = 0; i < maxPredictions; i++) {
+                    if (prediction[i].probability > 0.7) {
+                        // Hiển thị SweetAlert
+                        Swal.fire({
+                            title: 'Đã nhận diện ra: ' + prediction[i].className,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        });
+                        notified = true; // Đánh dấu đã thông báo
+                        if (prediction[i].className == "Chủ") {
+                            hideElementById("webcam-container"); // Ẩn phần tử webcam-container
+                            showElementByClass("wrapper"); // Hiện phần tử wrapper
+                        } else {
+                            Swal.fire({
+                                title: 'Bạn không phải là chủ không được thực hiện thao tác này',
+                                icon: 'warning',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                        break; // Thoát khỏi vòng lặp sau khi thông báo
+                    }
+                }
+            }
+        }
+
+        // Hàm ẩn phần tử theo id
+        function hideElementById(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.display = "none";
+            }
+        }
+
+        // Hàm hiện phần tử theo class và căn giữa
+        function showElementByClass(className) {
+            const elements = document.getElementsByClassName(className);
+            for (let i = 0; i < elements.length; i++) {
+                elements[i].style.display = "flex";
+                elements[i].style.justifyContent = "center";
+                elements[i].style.alignItems = "center";
+            }
+        }
+
+
+    </script>
+    <video autoplay loop muted>
+        <source src="bg.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div class="wrapper" style="display: none;">
+        <a class="icon1">
+            <i class="fas fa-4x fa-lightbulb"></i>
+        </a>
+        <div class="progress">
+            <div class="toggle-btn" id="unact">
+                <div class="inner-circle"></div>
             </div>
-            
+            <div class="toggle-btn active" id="act">
+                <div class=inner-circle></div>
+            </div>
         </div>
-    </body>
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+
 </html>
